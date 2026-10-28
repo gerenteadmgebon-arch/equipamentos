@@ -1,0 +1,57 @@
+name: Publicar Gebon G1
+on:
+  push:
+    branches: [main]
+    paths: ['public/**', 'firebase.json', 'scripts/**', '.github/workflows/publicar-g1.yml']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gebon-g1-hosting
+  cancel-in-progress: false
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/validar.mjs
+  publicar:
+    needs: validar
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    environment: producao-g1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Conferir configuração da conexão
+        env:
+          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$WIF_PROVIDER" || { echo 'Conexão Google pendente: GCP_WIF_PROVIDER'; exit 1; }
+          test -n "$SERVICE_ACCOUNT" || { echo 'Conexão Google pendente: GCP_SERVICE_ACCOUNT'; exit 1; }
+      - name: Instalar CLI com versão fixa
+        run: npm install --global firebase-tools@15.34.1
+      - name: Autenticar com identidade temporária
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - name: Publicar somente Hosting
+        env:
+          CI: 'true'
+        run: firebase deploy --only hosting --project gebon-testes-firestore --non-interactive
+      - name: Conferir arquivo publicado
+        run: node scripts/verificar-publicacao.mjs

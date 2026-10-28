@@ -1,0 +1,59 @@
+GEBON EQUIPAMENTOS V. G1 — PUBLICAÇÃO AUTOMATIZADA
+
+Estado: fluxo instalado no GitHub; conexão Google pendente; NÃO publicado no Firebase.
+Destino existente: gebon-testes-firestore (Firebase Hosting).
+Inclui o HTML preparado que retira Personalizar layout e preserva o indicador de conexão.
+Não inclui correção dos históricos. Não altera o backend Apps Script versão 18.
+
+FUNCIONAMENTO
+1. Alterações propostas ao branch main executam a validação, sem credenciais Google.
+2. Atualizações incorporadas ao main executam validação e publicação do Hosting.
+3. Publicação usa identidade temporária Google via OIDC, sem chave privada armazenada.
+4. O arquivo servido é comparado por SHA-256 com o arquivo enviado.
+5. Falhas ficam registradas no GitHub Actions. Reexecução manual disponível.
+
+PRÉ-REQUISITOS A CONFIGURAR COM ACESSO ÀS CONTAS
+- GitHub conectado: gerenteadmgebon-arch/equipamentos (ID 1435027179).
+  Repositório público: incluir somente interface pública, nunca dados ou backend privado.
+- Arquivos da interface e automação instalados na raiz do repositório.
+  Proprietário GitHub: gerenteadmgebon-arch (ID 338354155).
+- Criar ambiente GitHub producao-g1, restringindo publicações ao branch main.
+- Proteger main contra alterações diretas não revisadas.
+- Configurar Workload Identity Federation no projeto Google correto.
+- Restringir o provedor aos IDs numéricos do proprietário e repositório escolhidos,
+  ao branch refs/heads/main e ao ambiente producao-g1. Não confiar em qualquer
+  repositório GitHub nem usar apenas nomes que possam ser reutilizados.
+- Usar conta de serviço dedicada à publicação com Firebase Hosting Admin;
+  quando necessário, Service Usage Consumer. Não conceder Owner/Editor,
+  acesso a Firestore ou Drive.
+- Autorizar somente a identidade desse repositório/ambiente a usar a conta de
+  publicação (roles/iam.workloadIdentityUser).
+- Configurar variáveis do ambiente GitHub:
+  GCP_WIF_PROVIDER = nome completo do provedor criado no Google Cloud.
+  GCP_SERVICE_ACCOUNT = e-mail da conta de serviço dedicada.
+- Habilitar APIs necessárias à federação e Hosting se ainda não estiverem ativas.
+  Não ativar cobrança automaticamente. Avaliar cotas/condições do plano GitHub.
+- A criação desse acesso deve ser revisada e autorizada na configuração real.
+
+VALIDAÇÃO LOCAL
+Na raiz do pacote: node scripts/validar.mjs
+Verifica sintaxe dos scripts e integridade de configuração/auth do pacote.
+Não substitui testes de login, permissões, dados e fluxos de negócio no sistema real.
+
+RECUPERAÇÃO
+Reverter o commit do HTML no main e publicar novamente, ou usar o rollback
+do Firebase Hosting para a release anterior. Conferir novamente o conteúdo.
+Uma falha de conferência após deploy não implica rollback automático.
+
+LIMITES
+Sem conexão GitHub e configuração IAM a automação não funciona.
+Não elimina indisponibilidade de serviços, falhas de rede, cotas ou exigências
+eventuais de autorização. Elimina a dependência de clicar no editor para publicar telas.
+Não use esta automação para migrar dados ou atualizar Apps Script; essas etapas
+exigem procedimento separado e validação própria.
+
+FONTES
+https://firebase.google.com/docs/hosting/github-integration
+https://github.com/google-github-actions/auth
+https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines
+https://firebase.google.com/docs/cli
